@@ -1,0 +1,83 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:White_Desert.Controls">
+
+    <Style Selector="controls|HexEditorControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="FontSize" Value="14" />
+        
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="*, 300">
+                    
+                    <Border Grid.Column="0" 
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            ClipToBounds="True">
+                        
+                        <ScrollViewer Name="PART_ScrollViewer" 
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalAlignment="Stretch" 
+                                      VerticalAlignment="Top"
+                                      Padding="0,0,5,5">
+                            
+                            <Canvas Name="PART_VirtualCanvas" 
+                                    Background="Transparent" />
+                        </ScrollViewer>
+                    </Border>
+
+                    <Border Grid.Column="1" 
+                            Background="{DynamicResource LayerFillColorDefaultBrush}" 
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1,0,0,0"
+                            Padding="15"
+                            CornerRadius="8"
+                            Margin="5,0,0,0">
+                        
+                        <ScrollViewer>
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="Hex Search" 
+                                           Theme="{StaticResource TitleTextBlockStyle}" 
+                                           FontSize="20" />
+                                
+                                <TextBox Name="PART_SearchBox" 
+                                         Watermark="Hex (e.g. FF 00) or text..." 
+                                         Classes="clearButton" />
+                                
+                                <Expander Header="Search options" IsExpanded="False">
+                                    <StackPanel Spacing="10" Margin="0,5">
+                                        <CheckBox Content="Case sensitive" 
+                                                  IsChecked="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=IsCaseSensitive}" />
+                                        <CheckBox Content="Whole words" 
+                                                  IsChecked="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=SearchWholeWords}" />
+                                        <CheckBox Content="Search from Top" 
+                                                  IsChecked="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=SearchFromTop}" />
+                                    </StackPanel>
+                                </Expander>
+
+                                <Button Name="PART_FindNext" 
+                                        Content="Search" 
+                                        HorizontalAlignment="Stretch" 
+                                        Classes="accent" />
+                                
+                                <Button Name="PART_ClearSearch" 
+                                        Content="Clear search" 
+                                        HorizontalAlignment="Stretch" />
+                                
+                                <Separator Margin="0,10" />
+                                
+                                <TextBlock Text="Instructions" Theme="{StaticResource BodyStrongTextBlockStyle}" />
+                                <TextBlock Text="• Select bytes using the mouse." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
+                                <TextBlock Text="• Ctrl+C copies (Hex or Text depending on the clicked area)." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
+                                <TextBlock Text="• Ctrl+F focuses the search." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

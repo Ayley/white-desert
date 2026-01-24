@@ -1,0 +1,80 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+             xmlns:vm="using:White_Desert.ViewModels"
+             x:DataType="vm:SettingsViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="White_Desert.Views.SettingsView">
+
+    <Design.DataContext>
+        <vm:SettingsViewModel />
+    </Design.DataContext>
+
+    <StackPanel Spacing="8" Margin="20">
+        <TextBlock Text="Settings" Theme="{DynamicResource TitleTextBlockStyle}" Margin="0,0,0,12" />
+
+        <ui:SettingsExpander Header="Appearance"
+                             IconSource="Palette"
+                             Description="Customize how White Desert looks">
+            <ui:SettingsExpander.Items>
+                <ui:SettingsExpanderItem Content="App Theme">
+                    <ui:SettingsExpanderItem.Footer>
+                        <ComboBox ItemsSource="{Binding AvailableThemes}"
+                                  SelectedValue="{Binding SelectedTheme}" Width="150" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+            </ui:SettingsExpander.Items>
+        </ui:SettingsExpander>
+
+        <ui:SettingsExpander Header="Data &amp; Cache"
+                             IconSource="Storage"
+                             Description="Manage temporary PAZ extraction data">
+            <ui:SettingsExpander.Items>
+                <ui:SettingsExpanderItem Content="Automated Cache Cleanup"
+                                         Description="Automatically removes redundant file versions using Hash-Verification to save disk space.">
+                    <ui:SettingsExpanderItem.Footer>
+                        <ToggleSwitch IsChecked="{Binding DeleteOldCachedFiles}" OnContent="On" OffContent="Off" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+                <ui:SettingsExpanderItem Content="Clear Cache Now">
+                    <ui:SettingsExpanderItem.Footer>
+                        <Button Content="Clear All .tmp" Command="{Binding ClearCache}" Classes="accent" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+            </ui:SettingsExpander.Items>
+        </ui:SettingsExpander>
+
+        <ui:SettingsExpander Header="Workspace Tabs"
+                             IconSource="ViewAll"
+                             Description="Enable or disable specific asset viewers">
+            <ui:SettingsExpander.Items>
+                <ui:SettingsExpanderItem Content="Hex Viewer"
+                                         Description="Enable the hexadecimal data inspection tab">
+                    <ui:SettingsExpanderItem.Footer>
+                        <CheckBox IsChecked="{Binding ShowHexView}" VerticalAlignment="Center" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+
+                <ui:SettingsExpanderItem Content="Text Editor"
+                                         Description="Enable syntax highlighting for .xml, .lua and more">
+                    <ui:SettingsExpanderItem.Footer>
+                        <CheckBox IsChecked="{Binding ShowEditorView}" VerticalAlignment="Center" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+                <ui:SettingsExpanderItem Content="Image Preview"
+                                         Description="Preview image for .png, .jpg, .gif, .bmp, .dds and .dds1">
+                    <ui:SettingsExpanderItem.Footer>
+                        <CheckBox IsChecked="{Binding ShowImageView}" VerticalAlignment="Center" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+            </ui:SettingsExpander.Items>
+        </ui:SettingsExpander>
+
+        <ui:SettingsExpander Header="About"
+                             IconSource="Info"
+                             Description="{Binding AppVersion}">
+        </ui:SettingsExpander>
+    </StackPanel>
+</UserControl>

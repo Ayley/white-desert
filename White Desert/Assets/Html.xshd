@@ -1,0 +1,34 @@
+﻿<?xml version="1.0"?>
+<SyntaxDefinition name="HTML" extensions=".html;.htm" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#707070" />
+  <Color name="Tag" foreground="#E8BF6A" /> 
+  <Color name="Attr" foreground="#BABABA" />
+  <Color name="AttrValue" foreground="#6A8759" />
+
+  <RuleSet>
+    <Span color="Comment" multiline="true">
+      <Begin>&lt;!--</Begin>
+      <End>--&gt;</End>
+    </Span>
+
+    <Span multiline="true">
+      <Begin foreground="#FFC66D" fontWeight="bold">&lt;script\b[^&gt;]*&gt;</Begin>
+      <End foreground="#FFC66D" fontWeight="bold">&lt;/script&gt;</End>
+      <RuleSet>
+        <Import ruleSet="JavaScript/" />
+      </RuleSet>
+    </Span>
+
+    <Span color="Tag" multiline="true">
+      <Begin>&lt;</Begin>
+      <End>&gt;</End>
+      <RuleSet>
+        <Span color="AttrValue" multiline="true">
+          <Begin>"</Begin>
+          <End>"</End>
+        </Span>
+        <Rule color="Attr">[\w\d.-]+(?=\s*=)</Rule>
+      </RuleSet>
+    </Span>
+  </RuleSet>
+</SyntaxDefinition>

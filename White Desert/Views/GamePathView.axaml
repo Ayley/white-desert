@@ -1,0 +1,200 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:White_Desert.ViewModels"
+             xmlns:models="using:White_Desert.Models"
+             x:DataType="vm:GamePathViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="White_Desert.Views.GamePathView">
+
+    <Design.DataContext>
+        <vm:GamePathViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*, 120">
+
+        <Grid Row="0" ColumnDefinitions="4*, 2*">
+
+            <Border Grid.Column="0"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="15"
+                    Margin="10">
+
+                <Border.BoxShadow>
+                    <BoxShadows>0 4 10 0 #20000000</BoxShadows>
+                </Border.BoxShadow>
+
+                <Grid RowDefinitions="Auto, *, Auto">
+
+                    <TextBlock Grid.Row="0"
+                               FontSize="18"
+                               FontWeight="SemiBold">
+                        Select game path
+                    </TextBlock>
+
+                    <StackPanel Grid.Row="1"
+                                IsVisible="{Binding !HasSavedPaths}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center">
+                        <TextBlock
+                            Text="No game path found!"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+                        <TextBlock
+                            Text="Add or search for a game path."
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <ListBox Grid.Row="1"
+                             Margin="-5, 15"
+                             IsVisible="{Binding HasSavedPaths}"
+                             ItemsSource="{Binding GamePaths}" 
+                             SelectedItem="{Binding SelectedGamePath}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="x:String">
+                                <Border
+                                        Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                        CornerRadius="4"
+                                        Padding="15"
+                                        Margin="-15, 0,-13 0">
+                                    <TextBlock Text="{Binding}"></TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid Grid.Row="2" ColumnDefinitions="*, 15, *">
+                        <Button Grid.Column="0"
+                            HorizontalAlignment="Stretch"
+                            Height="35" 
+                            Content="Remove"
+                            IsEnabled="{Binding CanRemove}"
+                            Command="{Binding RemoveSelectedPath}"/>
+                        <Button Grid.Column="2"
+                                HorizontalAlignment="Stretch"
+                                Height="35" 
+                                Content="{Binding OpenStatus}"
+                                IsEnabled="{Binding CanOpen}"
+                                Classes="accent" 
+                                Command="{Binding NavigateToGame}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="15"
+                    Margin="10">
+
+                <Border.BoxShadow>
+                    <BoxShadows>0 4 10 0 #20000000</BoxShadows>
+                </Border.BoxShadow>
+
+                <Grid RowDefinitions="Auto, Auto, *, Auto">
+
+                    <TextBlock Grid.Row="0"
+                               FontSize="18"
+                               FontWeight="SemiBold">
+                        Search for game paths
+                    </TextBlock>
+
+                    <TextBlock Grid.Row="1"
+                               FontSize="14">
+                        Select the drives where you want to search for game path
+                    </TextBlock>
+
+                    <ScrollViewer Grid.Row="2"
+                                  Padding="0,5,15, 5"
+                                  Margin="0,5,0,5">
+                        <ItemsControl ItemsSource="{Binding Drives}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="models:SelectableDrive">
+                                    <Border
+                                        Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                        CornerRadius="4"
+                                        Padding="10"
+                                        Margin="0, 5">
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Drive}"
+                                                           FontSize="16"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" />
+                                            </CheckBox>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Button Grid.Row="3"
+                            HorizontalAlignment="Stretch"
+                            Height="35"
+                            IsEnabled="{Binding CanSearch}"
+                            Command="{Binding SearchAsync}"
+                            Classes="accent">
+                        <TextBlock Text="{Binding SearchStatus}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                CornerRadius="8"
+                Padding="15"
+                Margin="10">
+
+            <Border.BoxShadow>
+                <BoxShadows>0 4 10 0 #20000000</BoxShadows>
+            </Border.BoxShadow>
+
+            <Grid RowDefinitions="Auto, *">
+
+                <TextBlock Grid.Row="0"
+                           FontSize="16"
+                           FontWeight="SemiBold">
+                    Adding the game path manually
+                </TextBlock>
+
+                <Grid Grid.Row="1"
+                      ColumnDefinitions="*, Auto, 70"
+                      VerticalAlignment="Bottom">
+                    <TextBox Grid.Column="0"
+                             VerticalContentAlignment="Center"
+                             Watermark="Choose path..."
+                             Height="35"
+                             Text="{Binding TextboxGamePath}"/>
+
+                    <Button Grid.Column="1"
+                            HorizontalContentAlignment="Center"
+                            Content="..."
+                            Margin="5,0,0,0"
+                            Width="40"
+                            Height="35" 
+                            Command="{Binding BrowseFolderAsync}"
+                            CommandParameter="{Binding $parent[TopLevel]}"/>
+
+                    <Button Grid.Column="2"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Classes="accent"
+                            Content="Add"
+                            Margin="5,0,0,0"
+                            Width="70"
+                            Height="35"
+                            IsEnabled="{Binding CanTextboxGamePathAdd}"
+                            Command="{Binding AddManualPathAsync}"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

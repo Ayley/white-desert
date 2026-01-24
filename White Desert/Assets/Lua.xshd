@@ -1,0 +1,53 @@
+﻿<?xml version="1.0"?>
+<SyntaxDefinition name="Lua" extensions=".lua;.luac" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  
+  <Color name="Digits" foreground="#6897BB" /> <Color name="Comment" foreground="#707070" /> <Color name="String" foreground="#6A8759" /> <Color name="Punctuation" foreground="#A9B7C6" /> <Color name="Keywords" foreground="#CC7832" fontWeight="bold" /> <Color name="Functions" foreground="#FFC66D" /> <Color name="EngineAPI" foreground="#9876AA" fontStyle="italic" /> <RuleSet>
+    <Span color="Comment" multiline="true">
+      <Begin>--\[\[</Begin>
+      <End>\]\]</End>
+    </Span>
+    <Span color="Comment">
+      <Begin>--</Begin>
+    </Span>
+
+    <Span color="String">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>'</Begin>
+      <End>'</End>
+    </Span>
+
+    <Rule color="Functions">
+      \b\w+(?=\s*\()|(?&lt;=\bfunction\s+)\w+
+    </Rule>
+
+    <Rule color="EngineAPI">
+      \b(ToClient_|paGlobal_|registerEvent|UI_)\w*
+    </Rule>
+
+    <Rule color="Digits">
+      \b0[xX][0-9a-fA-F]+|(\b\d+(\.[0-9]+)?|\.[0-9]+)([eE][+-]?[0-9]+)?
+    </Rule>
+
+    <Keywords color="Punctuation">
+      <Word>?</Word><Word>,</Word><Word>.</Word><Word>;</Word>
+      <Word>(</Word><Word>)</Word><Word>[</Word><Word>]</Word>
+      <Word>{</Word><Word>}</Word><Word>+</Word><Word>-</Word>
+      <Word>/</Word><Word>%</Word><Word>*</Word><Word>=</Word>
+    </Keywords>
+
+    <Keywords color="Keywords">
+      <Word>and</Word><Word>break</Word><Word>do</Word><Word>else</Word>
+      <Word>elseif</Word><Word>end</Word><Word>false</Word><Word>for</Word>
+      <Word>function</Word><Word>if</Word><Word>in</Word><Word>local</Word>
+      <Word>nil</Word><Word>not</Word><Word>or</Word><Word>repeat</Word>
+      <Word>return</Word><Word>then</Word><Word>true</Word><Word>until</Word>
+      <Word>while</Word><Word>self</Word>
+    </Keywords>
+  </RuleSet>
+</SyntaxDefinition>

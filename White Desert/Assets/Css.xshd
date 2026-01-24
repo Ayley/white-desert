@@ -1,0 +1,16 @@
+﻿<?xml version="1.0"?>
+<SyntaxDefinition name="CSS" extensions=".css" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#707070" />
+  <Color name="Selector" foreground="#E8BF6A" /> <Color name="Property" foreground="#BABABA" /> <Color name="Value" foreground="#A5C261" /> <Color name="Units" foreground="#CC7832" /> <RuleSet>
+    <Span color="Comment" multiline="true"><Begin>/\*</Begin><End>\*/</End></Span>
+    
+    <Rule color="Selector">[\w\d\.\#\-\* \n\r\t]+(?=\s*\{)</Rule>
+    
+    <RuleSet>
+      <Span color="Property" begin="(?&lt;=\{|\;)\s*" end="(?=\:)" />
+      <Span color="Value" begin="(?&lt;=\:)\s*" end="(?=\;|\})" />
+    </RuleSet>
+    
+    <Rule color="Units">\b(px|em|rem|%|vh|vw|s|ms)\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

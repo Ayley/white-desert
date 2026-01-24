@@ -1,0 +1,13 @@
+[package]
+name = "black_ghost"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+memmap2 = "=0.9.9"
+rayon = "1.8"
+luadec = "0.2.0"
+safer-ffi = "0.1.13"

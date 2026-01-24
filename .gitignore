@@ -1,0 +1,38 @@
+﻿# === .NET / C# ===
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+# === Rust / Cargo ===
+target/
+**/*.rs.bk
+Cargo.lock (Optional: bei Libraries ignorieren, bei Apps meist einchecken)
+
+# === JetBrains Rider ===
+.idea/
+*.sln.iml
+*.csproj.iml
+# Falls du Rider-eigene Task-Listen oder lokale Workspace-Configs nutzt:
+.idea/.idea.*/.idea/workspace.xml
+.idea/.idea.*/.idea/shelf/
+.idea/.idea.*/.idea/contentModel.xml
+
+# === Avalonia UI ===
+# Manchmal generiert der Designer temporäre Files
+.avalonia/
+
+# === OS / System ===
+.DS_Store
+Thumbs.db
+
+# === App Spezifisch (White Desert) ===
+# Ignoriere extrahierte Testdaten oder Spiel-Backups
+/Extracts/
+/TestPaz/
+*.log
+*.paz
+*.meta
+!GhostBridge/NativeLibs/*.dll  # Stelle sicher, dass deine Rust-DLLs NICHT ignoriert werden

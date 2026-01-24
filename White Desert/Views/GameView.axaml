@@ -1,0 +1,112 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+             xmlns:vm="using:White_Desert.ViewModels"
+             xmlns:controls="using:White_Desert.Controls"
+             xmlns:editor="clr-namespace:White_Desert.Views.Editor"
+             x:DataType="vm:GameViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="White_Desert.Views.GameView">
+
+    <Design.DataContext>
+        <vm:GameViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*, Auto">
+
+        <Grid Grid.Row="0" ColumnDefinitions="2*, 4*">
+            <Border Grid.Column="0"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="15"
+                    Margin="10">
+
+                <Grid RowDefinitions="Auto, *, 45">
+
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto">
+                        <TextBox Grid.Column="0"
+                                 Watermark="Search..."
+                                 Text="{Binding SearchText}"
+                                 Height="35"
+                                 Classes="clearButton"
+                                 Margin="0,0,5,0">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Command="{Binding SearchAsync}" Gesture="Enter" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1"
+                                Height="35"
+                                Width="35"
+                                Padding="0"
+                                Command="{Binding SearchAsync}">
+                            <ui:SymbolIcon Symbol="Find" FontSize="18" />
+                        </Button>
+                    </Grid>
+
+                    <TreeDataGrid Grid.Row="1"
+                                  Margin="0,15,0,15"
+                                  Padding="0,0,15,0"
+                                  Source="{Binding ActiveSource}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  ShowColumnHeaders="False" />
+
+                    <Button Grid.Row="2"
+                            HorizontalAlignment="Stretch"
+                            Classes="accent"
+                            Content="{Binding ExtractText}"
+                            IsEnabled="{Binding CanExtract}"
+                            Command="{Binding Extract}"
+                            CommandParameter="{Binding $parent[TopLevel]}" />
+
+                </Grid>
+
+            </Border>
+
+            <Grid Grid.Column="1" RowDefinitions="55, *" Margin="10">
+
+                <TabStrip Grid.Row="0" Name="EditorTabStrip"
+                          SelectedIndex="0"
+                          Background="{DynamicResource LayerFillColorDefaultBrush}"
+                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                          Padding="10"
+                          CornerRadius="8"
+                          FontSize="18">
+                    <TabItem Header="Info" />
+                    <TabStripItem Content="Hex" IsVisible="{Binding ShowHexView}" />
+                    <TabStripItem Content="Editor" IsVisible="{Binding ShowEditorView}" />
+                    <TabStripItem Content="Image" IsVisible="{Binding ShowImageView}" />
+                </TabStrip>
+
+
+                <Border Grid.Row="1"
+                        Background="{DynamicResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="10"
+                        Margin="0,15,0,0"
+                        BoxShadow="0 2 10 0 #20000000">
+                    <Grid>
+                        <controls:PageContainer SelectedIndex="{Binding #EditorTabStrip.SelectedIndex}">
+
+                            <editor:FileInfoView />
+
+                            <editor:HexEditorView />
+
+                            <editor:TextEditorView />
+
+                            <editor:ImageEditorView />
+                            
+                        </controls:PageContainer>
+                    </Grid>
+                </Border>
+            </Grid>
+
+        </Grid>
+
+    </Grid>
+
+</UserControl>
