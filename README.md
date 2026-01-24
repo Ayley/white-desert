@@ -28,6 +28,25 @@
 
 ---
 
+## ⚠️ Known Issues (Work in Progress)
+
+* **Hex Editor Search**: The search functionality within the Hex Editor is currently not operational.
+* **File Info Accuracy**: Metadata displayed in the File Info panel may be incorrect in certain edge cases.
+* **Image View Persistence**: Deselecting an image does not automatically switch the view tab, leaving the Image View active.
+
+---
+
+## 🗺️ Roadmap (Future Features)
+
+The following features are planned for future updates (optional & non-binding):
+* **Advanced Extraction**: Option to extract Lua scripts directly in their decompiled state.
+* **Image Conversion**: Export `.dds` files directly as `.png` during extraction.
+* **Media Support**: Integrated WebM video playback.
+* **Audio Engine**: Ability to play back game sounds and music directly within the app.
+* **Localization Tools**: Improved display and handling of language/string files.
+
+---
+
 ## ⚖️ License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
