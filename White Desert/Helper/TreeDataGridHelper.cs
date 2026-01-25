@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Collections;
+using Serilog;
 using White_Desert.Models;
 using White_Desert.Models.GhostBridge;
 using White_Desert.Services.Contracts;
@@ -12,7 +14,7 @@ namespace White_Desert.Helper;
 
 public static class TreeDataGridHelper
 {
-    public static ObservableCollection<BdoNode> BuildSearchTree(IPazService paz, string query)
+    public static AvaloniaList<BdoNode> BuildSearchTree(IPazService paz, string query)
     {
         var foundIndices = paz.SearchFiles(query);
 
@@ -28,15 +30,18 @@ public static class TreeDataGridHelper
                 };
             }).ToList();
 
-        var rootList = new ObservableCollection<BdoNode>();
+        var rootList = new AvaloniaList<BdoNode>();
+        
         var folderCache = new Dictionary<string, BdoNode>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var result in searchResults)
         {
-            var parts = result.FolderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var cleanPath = result.FolderPath.Replace('\\', '/');
+            var parts = cleanPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            
             BdoNode? currentParent = null;
             var pathAcc = "";
-
+            
             for (var i = 0; i < parts.Length; i++)
             {
                 var partName = parts[i];
@@ -45,70 +50,135 @@ public static class TreeDataGridHelper
                 if (!folderCache.TryGetValue(pathAcc, out var folderNode))
                 {
                     folderNode = new BdoNode(partName, pathAcc + "/", true, -1) { WasLoaded = true };
+                    
                     if (currentParent == null) rootList.Add(folderNode);
                     else currentParent.Children.Add(folderNode);
+                    
                     folderCache.Add(pathAcc, folderNode);
                 }
 
                 currentParent = folderNode;
             }
 
-            var fileNode = new BdoNode(result.FileName, result.FolderPath + result.FileName, false, result.Index);
-            if (currentParent == null) rootList.Add(fileNode);
+            var fileNode = new BdoNode(result.FileName, cleanPath + result.FileName, false, result.Index);
+            
+            if (currentParent == null) rootList.Add(fileNode); 
             else currentParent.Children.Add(fileNode);
         }
+        
+        SortNodesRecursive(rootList);
 
-        return SortNodes(rootList);
+        return rootList;
     }
 
-    public static List<BdoNode> CreateRootNodes(List<FolderNameTuple> allFolders, BdoNode placeholder)
+    public static AvaloniaList<BdoNode> BuildFolderTree(List<FolderNameTuple> allFolder, BdoNode placeholder)
     {
-        return allFolders
+        var preparedPaths = allFolder
             .AsParallel()
-            .Select(f => f.FolderName.ToString().Split('/')[0])
-            .Distinct()
-            .OrderBy(n => n)
-            .Select(name =>
+            .Select(f =>
             {
-                var match = allFolders.First(f => f.FolderName.ToString().StartsWith(name));
-                var folderIdx = (match.FolderName.Data != IntPtr.Zero) ? (int)match.FolderIndex : -1;
-                var newNode = new BdoNode(name, name + "/", true, folderIdx);
-                newNode.Children.Add(placeholder);
-                return newNode;
-            }).ToList();
+                var original = f.FolderName.ToString();
+                return (
+                    Clean: original.Replace('\\', '/').Trim('/'),
+                    Original: original,
+                    Index: f.FolderIndex
+                );
+            })
+            .Where(x => !string.IsNullOrEmpty(x.Clean))
+            .OrderBy(x => x.Clean.Length) 
+            .ToList();
+
+        var nodeCache = new Dictionary<string, BdoNode>(allFolder.Count, StringComparer.OrdinalIgnoreCase);
+        var roots = new AvaloniaList<BdoNode>();
+
+        foreach (var (cleanPath, originalPath, folderIndex) in preparedPaths)
+        {
+            var parts = cleanPath.Split('/');
+            string currentPathAcc = "";
+            BdoNode parentNode = null;
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var partName = parts[i];
+                currentPathAcc = i == 0 ? partName : $"{currentPathAcc}/{partName}";
+
+                if (!nodeCache.TryGetValue(currentPathAcc, out BdoNode currentNode))
+                {
+                    int? idx = (currentPathAcc == cleanPath) ? (int)folderIndex : null;
+                    string fullPathForPaz = currentPathAcc + "/";
+
+                    currentNode = new BdoNode(partName, fullPathForPaz, true, idx);
+                    
+                    currentNode.Children.Add(placeholder);
+
+                    if (parentNode == null) roots.Add(currentNode);
+                    else parentNode.Children.Add(currentNode);
+
+                    nodeCache[currentPathAcc] = currentNode;
+                }
+
+                if (parentNode != null && parentNode.Children.Contains(placeholder))
+                {
+                    parentNode.Children.Remove(placeholder);
+                }
+
+                parentNode = currentNode;
+            }
+        }
+
+        SortNodesRecursive(roots);
+
+        return roots;
     }
 
-    public static List<BdoNode> GetFolderChildren(IPazService paz, ILookup<string, FolderNameTuple> lookup,
-        BdoNode parent, BdoNode placeholder)
+    private static void SortNodesRecursive(IList<BdoNode> nodes)
+    {
+        if (nodes.Count == 0) return;
+
+        var sorted = nodes
+            .OrderByDescending(x => x.IsFolder)
+            .ThenBy(x => x.Name)
+            .ToList();
+
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            nodes[i] = sorted[i];
+
+            if (sorted[i].Children != null && sorted[i].Children.Count > 0)
+            {
+                SortNodesRecursive(sorted[i].Children);
+            }
+        }
+    }
+
+    public static List<BdoNode> GetFolderChildren(IPazService paz, BdoNode parent)
     {
         var result = new List<BdoNode>();
 
-        if (lookup.Contains(parent.FullPath))
-        {
-            var subFolders = lookup[parent.FullPath]
-                .Select(f =>
-                {
-                    var fullPath = f.FolderName.ToString();
-                    var name = fullPath.TrimEnd('/').Split('/').Last();
-                    var node = new BdoNode(name, fullPath, true, (int)f.FolderIndex);
-                    node.Children.Add(placeholder);
-                    return node;
-                });
-            result.AddRange(subFolders);
-        }
-
         if (parent.EntryIndex.HasValue && parent.EntryIndex.Value != -1)
         {
-            var fileIndices = paz.GetFilesInFolder((uint)parent.EntryIndex.Value);
-            var fileNames = paz.GetFileNames(fileIndices);
+            try
+            {
+                var fileIndices = paz.GetFilesInFolder((uint)parent.EntryIndex.Value);
+                if (fileIndices != null && fileIndices.Length > 0)
+                {
+                    var fileNames = paz.GetFileNames(fileIndices);
+                    for (int i = 0; i < fileIndices.Length; i++)
+                    {
+                        var separator = parent.FullPath.EndsWith("/") ? "" : "/";
+                        var fullPath = parent.FullPath + separator + fileNames[i];
 
-            var files = fileIndices.Select((idx, i) =>
-                new BdoNode(fileNames[i], parent.FullPath + fileNames[i], false, idx));
-
-            result.AddRange(files);
+                        result.Add(new BdoNode(fileNames[i], fullPath, false, (int)fileIndices[i]));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting files for folder {Path}", parent.FullPath);
+            }
         }
 
-        return result.OrderByDescending(n => n.IsFolder).ThenBy(n => n.Name).ToList();
+        return result.OrderBy(n => n.Name).ToList();
     }
 
     public static List<uint> CollectIndicesParallel(IPazService paz, IEnumerable<BdoNode> selectedNodes,
@@ -176,9 +246,9 @@ public static class TreeDataGridHelper
         }
     }
 
-    private static ObservableCollection<BdoNode> SortNodes(ObservableCollection<BdoNode> nodes)
+    private static AvaloniaList<BdoNode> SortNodes(AvaloniaList<BdoNode> nodes)
     {
         var sortedList = nodes.OrderByDescending(x => x.IsFolder).ThenBy(x => x.Name).ToList();
-        return new ObservableCollection<BdoNode>(sortedList);
+        return new AvaloniaList<BdoNode>(sortedList);
     }
 }

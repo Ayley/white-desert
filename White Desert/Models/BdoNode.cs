@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Collections;
 
 namespace White_Desert.Models;
 
@@ -9,7 +10,7 @@ public class BdoNode
     public string FullPath { get; }
     public bool IsFolder { get; }
     public int? EntryIndex { get; set; }
-    public ObservableCollection<BdoNode> Children { get; }
+    public AvaloniaList<BdoNode>? Children { get; }
     public bool WasLoaded { get; set; } 
 
     public BdoNode(string name, string fullPath, bool isFolder, int? index = null)
@@ -21,7 +22,7 @@ public class BdoNode
         
         if (isFolder)
         {
-            Children = new ObservableCollection<BdoNode>();
+            Children = new AvaloniaList<BdoNode>();
         }
     }
 }
