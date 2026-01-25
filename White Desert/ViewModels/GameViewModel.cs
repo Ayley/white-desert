@@ -43,7 +43,6 @@ public partial class GameViewModel : ViewModelBase
 
     private readonly BdoNode _placeholder = new("", "", false);
 
-    private ILookup<string, FolderNameTuple> _folderLookup = null!;
     private readonly IFileService<AppSettings> _fileService;
     private readonly IPazService _pazService;
     private readonly ICursorService _cursorService;
@@ -109,6 +108,8 @@ public partial class GameViewModel : ViewModelBase
         if (node == null) return;
 
         CanExtract = true;
+
+        WeakReferenceMessenger.Default.Send(new InitSelectedFileChanged());
 
         if (node.EntryIndex == null) return;
 
@@ -185,44 +186,44 @@ public partial class GameViewModel : ViewModelBase
 
     public async Task Extract(Visual visual)
     {
-        using (_cursorService.BusyScope())
+        _cursorService.SetWaitCursor();
+        var selectedItems = ActiveSource.RowSelection?.SelectedItems.Cast<BdoNode>().ToList();
+        if (selectedItems == null || selectedItems.Count == 0) return;
+
+        var topLevel = TopLevel.GetTopLevel(visual);
+        var folders = await topLevel!.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            { Title = "Select Export Destination" });
+        if (folders.Count == 0) return;
+
+        var outputRoot = folders[0].Path.LocalPath;
+        CanExtract = false;
+
+        try
         {
-            var selectedItems = ActiveSource.RowSelection?.SelectedItems.Cast<BdoNode>().ToList();
-            if (selectedItems == null || selectedItems.Count == 0) return;
+            ExtractText = "Scanning selection...";
 
-            var topLevel = TopLevel.GetTopLevel(visual);
-            var folders = await topLevel!.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                { Title = "Select Export Destination" });
-            if (folders.Count == 0) return;
+            var indices = await Task.Run(() =>
+                TreeDataGridHelper.CollectIndicesParallel(_pazService, selectedItems));
 
-            var outputRoot = folders[0].Path.LocalPath;
-            CanExtract = false;
-
-            try
+            if (indices.Count > 0)
             {
-                ExtractText = "Scanning selection...";
+                await Task.Run(() => _pazService.ExtractFilesBatch(outputRoot, indices,
+                    (current, total) => ExtractText = $"Extracting: {current} / {total}"));
 
-                var indices = await Task.Run(() =>
-                    TreeDataGridHelper.CollectIndicesParallel(_pazService, selectedItems, _folderLookup));
-
-                if (indices.Count > 0)
-                {
-                    await Task.Run(() => _pazService.ExtractFilesBatch(outputRoot, indices,
-                        (current, total) => ExtractText = $"Extracting: {current} / {total}"));
-
-                    ExtractText = $"Successfully extracted {indices.Count} files!";
-                    await Task.Delay(2000);
-                }
+                ExtractText = $"Successfully extracted {indices.Count} files!";
+                _cursorService.SetDefaultCursor();
+                await Task.Delay(2000);
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error extracting files");
-            }
-            finally
-            {
-                ExtractText = "Extract";
-                CanExtract = true;
-            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error extracting files");
+        }
+        finally
+        {
+            _cursorService.SetDefaultCursor();
+            ExtractText = "Extract";
+            CanExtract = true;
         }
     }
 
@@ -262,8 +263,8 @@ public partial class GameViewModel : ViewModelBase
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                if(parent.Children == null) return;
-                
+                if (parent.Children == null) return;
+
                 var placeholder = parent.Children.FirstOrDefault(c => c == _placeholder);
                 if (placeholder != null)
                 {

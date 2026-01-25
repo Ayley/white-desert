@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
-            
+
              xmlns:editor="clr-namespace:White_Desert.ViewModels.Editor"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="editor:FileInfoViewModel"
@@ -24,14 +24,13 @@
             <Setter Property="VerticalAlignment" Value="Stretch" />
         </Style>
     </UserControl.Styles>
-    
+
     <Grid RowDefinitions="Auto, Auto, *">
 
-        <TextBlock Grid.Row="0" Text="{Binding SelectedPazFile.FileName}"
-                   Theme="{DynamicResource BodyStrongTextBlockStyle}"
-                   VerticalAlignment="Center"
-                   FontSize="22"
-                   Margin="5,0,0,5" />
+        <SelectableTextBlock Grid.Row="0" Text="{Binding SelectedPazFile.FileName}"
+                             VerticalAlignment="Center"
+                             FontSize="22"
+                             Margin="5,0,0,5" />
 
         <UniformGrid Grid.Row="1" Columns="3" VerticalAlignment="Top" ColumnSpacing="8">
 
@@ -42,9 +41,10 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Archive"
                                    Theme="{DynamicResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="{Binding SelectedPazFile.PazFileName}"
-                                   Theme="{DynamicResource CaptionTextBlockStyle}"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <SelectableTextBlock Text="{Binding SelectedPazFile.PazFileName}"
+                                             FontSize="12"
+                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                             TextWrapping="NoWrap" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -58,14 +58,16 @@
                             <TextBlock Text="Storage"
                                        Theme="{DynamicResource BodyStrongTextBlockStyle}" />
                             <Grid>
-                                <TextBlock
+                                <SelectableTextBlock
                                     Text="{Binding SelectedPazFile.CompressionRatioString}"
-                                    Theme="{DynamicResource CaptionTextBlockStyle}"
+                                    FontSize="12"
                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="NoWrap"
                                     HorizontalAlignment="Left" />
-                                <TextBlock
+                                <SelectableTextBlock
                                     Text="{Binding SelectedPazFile.FormattedOriginalSize}"
-                                    Theme="{DynamicResource CaptionTextBlockStyle}"
+                                    FontSize="12"
+                                    TextWrapping="NoWrap"
                                     HorizontalAlignment="Right"
                                     Margin="0,0,0,-12" />
                             </Grid>
@@ -87,9 +89,10 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Mapping"
                                    Theme="{DynamicResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="{Binding SelectedPazFile.MappingString}"
-                                   Theme="{DynamicResource CaptionTextBlockStyle}"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <SelectableTextBlock Text="{Binding SelectedPazFile.MappingString}"
+                                             FontSize="12"
+                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                             TextWrapping="NoWrap" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -109,7 +112,7 @@
                         <TextBlock Text="Physical File Offset"
                                    Theme="{DynamicResource CaptionTextBlockStyle}"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <TextBlock
+                        <SelectableTextBlock
                             Text="{Binding SelectedPazFile.Offset, StringFormat='{}0x{0:X8}'}"
                             FontSize="16" FontWeight="SemiBold"
                             FontFamily="Cascadia Code,Consolas" />
@@ -142,7 +145,7 @@
                             <TextBlock Text="Hash (Path)"
                                        Theme="{DynamicResource CaptionTextBlockStyle}"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <TextBlock
+                            <SelectableTextBlock
                                 Text="{Binding SelectedPazFile.Hash, StringFormat='{}0x{0:X8}'}"
                                 FontFamily="Consolas" />
                         </StackPanel>
@@ -151,8 +154,8 @@
                             <TextBlock Text="Archive Block Index (PazID)"
                                        Theme="{DynamicResource CaptionTextBlockStyle}"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Text="{Binding SelectedPazFile.PazId}"
-                                       FontFamily="Consolas" />
+                            <SelectableTextBlock Text="{Binding SelectedPazFile.PazId}"
+                                                 FontFamily="Consolas" />
                         </StackPanel>
                     </UniformGrid>
 
@@ -161,7 +164,7 @@
                             <TextBlock Text="Compressed Size (Bytes)"
                                        Theme="{DynamicResource CaptionTextBlockStyle}"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <TextBlock
+                            <SelectableTextBlock
                                 Text="{Binding SelectedPazFile.CompressedSize, StringFormat='{}{0:N0}'}"
                                 FontFamily="Consolas" />
                         </StackPanel>
@@ -170,7 +173,7 @@
                             <TextBlock Text="Original Size (Bytes)"
                                        Theme="{DynamicResource CaptionTextBlockStyle}"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <TextBlock
+                            <SelectableTextBlock
                                 Text="{Binding SelectedPazFile.OriginalSize, StringFormat='{}{0:N0}'}"
                                 FontFamily="Consolas" />
                         </StackPanel>
@@ -180,9 +183,9 @@
                             CornerRadius="4" Padding="10">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <ui:SymbolIcon Symbol="OpenFolder" FontSize="14" />
-                            <TextBlock Text="{Binding SelectedPazFile.FolderName}"
-                                       FontSize="12" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <SelectableTextBlock Text="{Binding SelectedPazFile.FolderName}"
+                                                 FontSize="12" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </Border>
 
@@ -190,8 +193,8 @@
                         <ui:ItemsRepeater.ItemTemplate>
                             <DataTemplate DataType="x:String">
                                 <Grid ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="{Binding}"
-                                               VerticalAlignment="Center" />
+                                    <SelectableTextBlock Grid.Column="0" Text="{Binding}"
+                                                         VerticalAlignment="Center" />
                                     <Button Grid.Column="1"
                                             VerticalAlignment="Center"
                                             Command="{Binding $parent[ui:ItemsRepeater].((editor:FileInfoViewModel)DataContext).DeleteCachedFileCommand}"

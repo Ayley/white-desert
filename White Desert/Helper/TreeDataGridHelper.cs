@@ -31,17 +31,17 @@ public static class TreeDataGridHelper
             }).ToList();
 
         var rootList = new AvaloniaList<BdoNode>();
-        
+
         var folderCache = new Dictionary<string, BdoNode>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var result in searchResults)
         {
             var cleanPath = result.FolderPath.Replace('\\', '/');
             var parts = cleanPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            
+
             BdoNode? currentParent = null;
             var pathAcc = "";
-            
+
             for (var i = 0; i < parts.Length; i++)
             {
                 var partName = parts[i];
@@ -50,10 +50,10 @@ public static class TreeDataGridHelper
                 if (!folderCache.TryGetValue(pathAcc, out var folderNode))
                 {
                     folderNode = new BdoNode(partName, pathAcc + "/", true, -1) { WasLoaded = true };
-                    
+
                     if (currentParent == null) rootList.Add(folderNode);
                     else currentParent.Children.Add(folderNode);
-                    
+
                     folderCache.Add(pathAcc, folderNode);
                 }
 
@@ -61,11 +61,11 @@ public static class TreeDataGridHelper
             }
 
             var fileNode = new BdoNode(result.FileName, cleanPath + result.FileName, false, result.Index);
-            
-            if (currentParent == null) rootList.Add(fileNode); 
+
+            if (currentParent == null) rootList.Add(fileNode);
             else currentParent.Children.Add(fileNode);
         }
-        
+
         SortNodesRecursive(rootList);
 
         return rootList;
@@ -85,7 +85,7 @@ public static class TreeDataGridHelper
                 );
             })
             .Where(x => !string.IsNullOrEmpty(x.Clean))
-            .OrderBy(x => x.Clean.Length) 
+            .OrderBy(x => x.Clean.Length)
             .ToList();
 
         var nodeCache = new Dictionary<string, BdoNode>(allFolder.Count, StringComparer.OrdinalIgnoreCase);
@@ -108,7 +108,7 @@ public static class TreeDataGridHelper
                     string fullPathForPaz = currentPathAcc + "/";
 
                     currentNode = new BdoNode(partName, fullPathForPaz, true, idx);
-                    
+
                     currentNode.Children.Add(placeholder);
 
                     if (parentNode == null) roots.Add(currentNode);
@@ -181,8 +181,7 @@ public static class TreeDataGridHelper
         return result.OrderBy(n => n.Name).ToList();
     }
 
-    public static List<uint> CollectIndicesParallel(IPazService paz, IEnumerable<BdoNode> selectedNodes,
-        ILookup<string, FolderNameTuple> lookup)
+    public static List<uint> CollectIndicesParallel(IPazService paz, IEnumerable<BdoNode> selectedNodes)
     {
         var results = new ConcurrentBag<uint>();
 
@@ -192,7 +191,7 @@ public static class TreeDataGridHelper
 
             if (node.IsFolder)
             {
-                CollectIndicesRecursive(paz, lookup, node, localList);
+                CollectIndicesRecursive(paz, node, localList);
             }
             else if (node.EntryIndex.HasValue)
             {
@@ -205,46 +204,36 @@ public static class TreeDataGridHelper
         return results.Distinct().ToList();
     }
 
-    private static void CollectIndicesRecursive(IPazService paz, ILookup<string, FolderNameTuple> lookup,
-        BdoNode parent, List<uint> results)
+    private static void CollectIndicesRecursive(IPazService paz, BdoNode parent, List<uint> results)
     {
         if (parent.EntryIndex is { } folderIdx && folderIdx != -1)
         {
-            var fileIndices = paz.GetFilesInFolder((uint)folderIdx);
-            foreach (var idx in fileIndices)
+            try
             {
-                results.Add((uint)idx);
+                var fileIndices = paz.GetFilesInFolder((uint)folderIdx);
+                foreach (var idx in fileIndices)
+                {
+                    results.Add((uint)idx);
+                }
+            }
+            catch
+            {
+                // Ignoriere Fehler bei einzelnen Ordnern
             }
         }
-
-        var lookupKey = parent.FullPath;
-
-        if (lookup.Contains(lookupKey))
+        
+        if (parent.Children != null)
         {
-            foreach (var sub in lookup[lookupKey])
+            foreach (var child in parent.Children)
             {
-                var subPath = sub.FolderName.ToString();
-                var subFolderIdx = (int)sub.FolderIndex;
-
-                CollectIndicesRecursiveInternal(paz, lookup, subPath, subFolderIdx, results);
+                if (child.IsFolder)
+                {
+                    CollectIndicesRecursive(paz, child, results);
+                }
             }
         }
     }
 
-    private static void CollectIndicesRecursiveInternal(IPazService paz, ILookup<string, FolderNameTuple> lookup,
-        string fullPath, int folderIdx, List<uint> results)
-    {
-        var fileIndices = paz.GetFilesInFolder((uint)folderIdx);
-        foreach (var idx in fileIndices) results.Add((uint)idx);
-
-        if (lookup.Contains(fullPath))
-        {
-            foreach (var sub in lookup[fullPath])
-            {
-                CollectIndicesRecursiveInternal(paz, lookup, sub.FolderName.ToString(), (int)sub.FolderIndex, results);
-            }
-        }
-    }
 
     private static AvaloniaList<BdoNode> SortNodes(AvaloniaList<BdoNode> nodes)
     {

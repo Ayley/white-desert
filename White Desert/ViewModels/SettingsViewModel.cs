@@ -25,7 +25,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     private bool _isSetup = false;
 
-    public string AppVersion => "v1.0.0";
+    public string AppVersion => "v1.0.2";
 
     private readonly IFileService<AppSettings> _fileService;
 

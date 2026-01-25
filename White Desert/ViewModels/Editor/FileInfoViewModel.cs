@@ -24,6 +24,12 @@ public partial class FileInfoViewModel : ViewModelBase
     private void RegisterWeakReferences()
     {
         WeakReferenceMessenger.Default.Register<SelectedFileChanged>(this, SelectedFileChanged);
+        WeakReferenceMessenger.Default.Register<InitSelectedFileChanged>(this, InitSelectedFileChanged);
+    }
+
+    private void InitSelectedFileChanged(object recipient, InitSelectedFileChanged message)
+    {
+        SelectedPazFile = null;
     }
 
     private void SelectedFileChanged(object recipient, SelectedFileChanged message)

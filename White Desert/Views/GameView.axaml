@@ -16,7 +16,16 @@
 
     <Grid RowDefinitions="*, Auto">
 
-        <Grid Grid.Row="0" ColumnDefinitions="2*, 4*">
+        <Grid Grid.Row="0">
+            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" MinWidth="250" />
+        
+                <ColumnDefinition Width="4" />
+        
+                <ColumnDefinition Width="4*" MinWidth="400" />
+            </Grid.ColumnDefinitions>
+            
             <Border Grid.Column="0"
                     Background="{DynamicResource LayerFillColorDefaultBrush}"
                     CornerRadius="8"
@@ -65,7 +74,15 @@
 
             </Border>
 
-            <Grid Grid.Column="1" RowDefinitions="55, *" Margin="10">
+            <GridSplitter Grid.Column="1" 
+                          ResizeDirection="Columns" 
+                          Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                          Width="4"
+                          CornerRadius="8"
+                          Margin="0 ,12">
+            </GridSplitter>
+            
+            <Grid Grid.Column="2" RowDefinitions="55, *" Margin="10">
 
                 <TabStrip Grid.Row="0" Name="EditorTabStrip"
                           SelectedIndex="0"
@@ -76,7 +93,7 @@
                           FontSize="18">
                     <TabItem Header="Info" />
                     <TabStripItem Content="Hex" IsVisible="{Binding ShowHexView}" />
-                    <TabStripItem Content="Editor" IsVisible="{Binding ShowEditorView}" />
+                    <TabStripItem Content="Text" IsVisible="{Binding ShowEditorView}" />
                     <TabStripItem Content="Image" IsVisible="{Binding ShowImageView}" />
                 </TabStrip>
 
