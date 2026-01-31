@@ -1,7 +1,7 @@
 ﻿use crate::util::folder_name_tuple::FolderNameTuple;
+use rayon::prelude::*;
 use safer_ffi::__::repr_c;
 use safer_ffi::derive_ReprC;
-use std::ops::Deref;
 
 #[derive_ReprC]
 #[repr(C)]
@@ -20,8 +20,10 @@ impl PadMeta {
         file_raw: &[u8],
         file_count: usize,
     ) -> (Self, Vec<u32>) {
-        let (sorted_folders, id_map) = Self::parse_folders_sorted(folder_raw);
-        let file_names = Self::parse_files(file_raw, file_count);
+        let (file_names, (sorted_folders, id_map)) = rayon::join(
+            || Self::parse_files_chunked(file_raw, file_count),
+            || Self::parse_folders_sorted(folder_raw)
+        );
 
         let meta = Self {
             version,
@@ -32,82 +34,105 @@ impl PadMeta {
 
         (meta, id_map)
     }
-    pub fn parse(
-        version: u32,
-        paz_count: u32,
-        folder_raw: &[u8],
-        file_raw: &[u8],
-        file_count: usize,
-    ) -> Self {
-        let folders = Self::parse_folders(folder_raw);
-        let file_names = Self::parse_files(file_raw, file_count);
-
-        let meta = Self {
-            version,
-            paz_file_count: paz_count,
-            folder_paths: folders.into(),
-            file_names: file_names.into(),
-        };
-
-        meta
-    }
 
     fn parse_folders_sorted(data: &[u8]) -> (Vec<FolderNameTuple>, Vec<u32>) {
-        let mut folders = Self::parse_folders(data);
+        let mut folders = Self::parse_folders_fast_seq(data);
+
+        folders.par_sort_unstable_by(|a, b| a.folder_name.cmp(&b.folder_name));
 
         let mut id_map = vec![0u32; folders.len()];
-
-        folders.as_mut_slice().sort_by(|a, b| {
-            let name_a: &str = a.folder_name.deref();
-            let name_b: &str = b.folder_name.deref();
-            name_a.cmp(name_b)
-        });
-
         for (new_idx, folder) in folders.iter_mut().enumerate() {
-            id_map[folder.folder_index as usize] = new_idx as u32;
+            let old_id = folder.folder_index as usize;
+            if old_id < id_map.len() {
+                id_map[old_id] = new_idx as u32;
+            }
             folder.folder_index = new_idx as u32;
         }
 
         (folders, id_map)
     }
 
-    fn parse_folders(data: &[u8]) -> Vec<FolderNameTuple> {
-        let mut folders: Vec<FolderNameTuple> = Vec::with_capacity(8000);
+    fn parse_folders_fast_seq(data: &[u8]) -> Vec<FolderNameTuple> {
+        let mut folders = Vec::with_capacity(8000);
+        let mut cursor = 0;
+        let len = data.len();
+        let mut id_counter = 0;
 
-        let mut i = 8;
+        let limit = len.saturating_sub(8);
 
-        while i < data.len() {
-            let start = i;
-            while i < data.len() && data[i] != 0 {
-                i += 1;
+        while cursor < limit {
+            cursor += 8;
+            let start = cursor;
+
+            match memchr::memchr(0, &data[cursor..]) {
+                Some(offset) => {
+                    let end = cursor + offset;
+                    let name = unsafe {
+                        String::from_utf8_unchecked(data[start..end].to_vec())
+                    };
+
+                    folders.push(FolderNameTuple {
+                        folder_name: name.into(),
+                        folder_index: id_counter,
+                    });
+
+                    id_counter += 1;
+                    cursor = end + 1;
+                }
+                None => break,
             }
-
-            if i > start {
-                let name = String::from_utf8_lossy(&data[start..i]).to_string();
-                let id = folders.len() as u32;
-                folders.push(FolderNameTuple {
-                    folder_name: name.into(),
-                    folder_index: id,
-                });
-            }
-            i += 9;
         }
-
         folders
     }
 
-    fn parse_files(data: &[u8], count: usize) -> Vec<safer_ffi::String> {
-        let mut names = Vec::with_capacity(count);
-        let mut i = 0;
-        while i < data.len() {
-            let start = i;
-            while i < data.len() && data[i] != 0 {
-                i += 1;
+    fn parse_files_chunked(data: &[u8], count_hint: usize) -> Vec<safer_ffi::String> {
+        if data.is_empty() { return Vec::new(); }
+
+        let num_threads = rayon::current_num_threads();
+        if count_hint < 1000 || num_threads == 1 {
+            return Self::parse_files_seq_inner(data);
+        }
+
+        let chunk_size = data.len() / num_threads;
+        let mut split_indices = Vec::with_capacity(num_threads + 1);
+        split_indices.push(0);
+
+        for i in 1..num_threads {
+            let mut idx = i * chunk_size;
+            if let Some(offset) = memchr::memchr(0, &data[idx..]) {
+                idx += offset + 1;
+                if idx < data.len() {
+                    split_indices.push(idx);
+                }
             }
-            if i > start {
-                names.push(String::from_utf8_lossy(&data[start..i]).to_string().into());
+        }
+        split_indices.push(data.len());
+
+        split_indices.par_windows(2).flat_map(|window| {
+            let start = window[0];
+            let end = window[1];
+            let slice = &data[start..end];
+
+            Self::parse_files_seq_inner(slice)
+        }).collect()
+    }
+
+    fn parse_files_seq_inner(data: &[u8]) -> Vec<safer_ffi::String> {
+        let mut names = Vec::with_capacity(data.len() / 20);
+        let mut cursor = 0;
+
+        while cursor < data.len() {
+            match memchr::memchr(0, &data[cursor..]) {
+                Some(len) => {
+                    let end = cursor + len;
+                    let s = unsafe {
+                        String::from_utf8_unchecked(data[cursor..end].to_vec())
+                    };
+                    names.push(s.into());
+                    cursor = end + 1;
+                }
+                None => break,
             }
-            i += 1;
         }
         names
     }

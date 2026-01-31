@@ -6,6 +6,7 @@
              xmlns:vm="using:White_Desert.ViewModels"
              xmlns:controls="using:White_Desert.Controls"
              xmlns:editor="clr-namespace:White_Desert.Views.Editor"
+             xmlns:interop="clr-namespace:White_Desert.Helper.Interop"
              x:DataType="vm:GameViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="White_Desert.Views.GameView">
@@ -17,15 +18,15 @@
     <Grid RowDefinitions="*, Auto">
 
         <Grid Grid.Row="0">
-            
+
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1*" MinWidth="250" />
-        
+
                 <ColumnDefinition Width="4" />
-        
+
                 <ColumnDefinition Width="4*" MinWidth="400" />
             </Grid.ColumnDefinitions>
-            
+
             <Border Grid.Column="0"
                     Background="{DynamicResource LayerFillColorDefaultBrush}"
                     CornerRadius="8"
@@ -60,7 +61,43 @@
                                   Source="{Binding ActiveSource}"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch"
-                                  ShowColumnHeaders="False" />
+                                  ShowColumnHeaders="False">
+                        <TreeDataGrid.Styles>
+                            <Style Selector="TreeDataGridRow">
+                                <Setter Property="ContextMenu">
+                                    <ContextMenu>
+                                        <MenuItem Header="Extract">
+                                            <MenuItem Header="Normal" 
+                                                      ToolTip.Tip="The decrypted and decompressed file"
+                                                      Command="{Binding $parent[UserControl].((vm:GameViewModel)DataContext).Extract}"
+                                                      CommandParameter="{x:Static interop:ExtractType.RawDecrypted}" />
+              
+                                            <MenuItem Header="Processed" 
+                                                      ToolTip.Tip="For example a dds to png or decompiled luac file"
+                                                      Command="{Binding $parent[UserControl].((vm:GameViewModel)DataContext).Extract}"
+                                                      CommandParameter="{x:Static interop:ExtractType.Converted}" />
+                                        </MenuItem>
+                                        <MenuItem Header="Copy Path">
+                                            <MenuItem Header="Filename" 
+                                                      Command="{Binding $parent[UserControl].((vm:GameViewModel)DataContext).CopyPath}" 
+                                                      CommandParameter="Name"/>
+                                            <MenuItem Header="Filepath" 
+                                                      Command="{Binding $parent[UserControl].((vm:GameViewModel)DataContext).CopyPath}" 
+                                                      CommandParameter="Full"/>
+                                            <MenuItem Header="Folderpath" 
+                                                      Command="{Binding $parent[UserControl].((vm:GameViewModel)DataContext).CopyPath}" 
+                                                      CommandParameter="Folder"/>
+                                        </MenuItem>
+                                        <!--<MenuItem Header="Copy Content">
+                                            <MenuItem Header="Raw"></MenuItem>
+                                            <MenuItem Header="Decoded and Decompiled"></MenuItem>
+                                            <MenuItem Header="Processed"></MenuItem>
+                                        </MenuItem>-->
+                                    </ContextMenu>
+                                </Setter>
+                            </Style>
+                        </TreeDataGrid.Styles>
+                    </TreeDataGrid>
 
                     <Button Grid.Row="2"
                             HorizontalAlignment="Stretch"
@@ -68,24 +105,24 @@
                             Content="{Binding ExtractText}"
                             IsEnabled="{Binding CanExtract}"
                             Command="{Binding Extract}"
-                            CommandParameter="{Binding $parent[TopLevel]}" />
+                            CommandParameter="{x:Static interop:ExtractType.RawDecrypted}">
+                    </Button>
 
                 </Grid>
 
             </Border>
 
-            <GridSplitter Grid.Column="1" 
-                          ResizeDirection="Columns" 
+            <GridSplitter Grid.Column="1"
+                          ResizeDirection="Columns"
                           Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                           Width="4"
                           CornerRadius="8"
                           Margin="0 ,12">
             </GridSplitter>
-            
+
             <Grid Grid.Column="2" RowDefinitions="55, *" Margin="10">
 
-                <TabStrip Grid.Row="0" Name="EditorTabStrip"
-                          SelectedIndex="0"
+                <TabStrip Grid.Row="0" SelectedIndex="{Binding SelectedTabStripIndex}"
                           Background="{DynamicResource LayerFillColorDefaultBrush}"
                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                           Padding="10"
@@ -107,7 +144,7 @@
                         Margin="0,15,0,0"
                         BoxShadow="0 2 10 0 #20000000">
                     <Grid>
-                        <controls:PageContainer SelectedIndex="{Binding #EditorTabStrip.SelectedIndex}">
+                        <controls:PageContainer SelectedIndex="{Binding SelectedPageContainerIndex}">
 
                             <editor:FileInfoView />
 
@@ -116,7 +153,7 @@
                             <editor:TextEditorView />
 
                             <editor:ImageEditorView />
-                            
+
                         </controls:PageContainer>
                     </Grid>
                 </Border>

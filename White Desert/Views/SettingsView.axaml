@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
              xmlns:vm="using:White_Desert.ViewModels"
+             xmlns:m="using:White_Desert.Models"
              x:DataType="vm:SettingsViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="White_Desert.Views.SettingsView">
@@ -19,10 +20,32 @@
                              IconSource="Palette"
                              Description="Customize how White Desert looks">
             <ui:SettingsExpander.Items>
-                <ui:SettingsExpanderItem Content="App Theme">
+                <ui:SettingsExpanderItem Content="Theme">
                     <ui:SettingsExpanderItem.Footer>
                         <ComboBox ItemsSource="{Binding AvailableThemes}"
                                   SelectedValue="{Binding SelectedTheme}" Width="150" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+                <ui:SettingsExpanderItem Content="Transparency">
+                    <ui:SettingsExpanderItem.Footer>
+                        <ComboBox ItemsSource="{Binding AvailableWindowThemes}"
+                                  SelectedValue="{Binding SelectedWindowTheme}" Width="150" />
+                    </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+
+                <ui:SettingsExpanderItem Content="Color">
+                    <ui:SettingsExpanderItem.Footer>
+                        <ComboBox ItemsSource="{Binding AvailableBrushes}"
+                                  SelectedValue="{Binding SelectedBrush}" Width="150" >
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate DataType="m:BrushItem">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Background="{Binding Brush}" CornerRadius="4" Width="20" Height="20" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </ui:SettingsExpanderItem.Footer>
                 </ui:SettingsExpanderItem>
             </ui:SettingsExpander.Items>

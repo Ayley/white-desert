@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -19,6 +20,7 @@ public partial class GamePathViewModel : ViewModelBase, IProgress<string>
     [ObservableProperty] private string _openStatus = "Open";
     [ObservableProperty] private bool _canOpen;
     [ObservableProperty] private bool _canRemove;
+    [ObservableProperty] private bool _canCancelSearch;
     [ObservableProperty] private bool _hasSavedPaths;
     [ObservableProperty] private string _selectedGamePath = "";
     [ObservableProperty] private string _textboxGamePath = "";
@@ -31,6 +33,7 @@ public partial class GamePathViewModel : ViewModelBase, IProgress<string>
     private readonly IFileService<AppSettings> _appSettingsService;
     private readonly INavigationService _navigationService;
 
+    private CancellationTokenSource? _searchTokenSource;
 
     public GamePathViewModel(IGameSearchService gameSearchService, IFileService<AppSettings> appSettingsService,
         INavigationService navigationService)
@@ -46,10 +49,7 @@ public partial class GamePathViewModel : ViewModelBase, IProgress<string>
     {
         await _appSettingsService.LoadAsync();
 
-        GamePaths.CollectionChanged += (_, _) =>
-        {
-            HasSavedPaths = GamePaths.Count > 0;
-        };
+        GamePaths.CollectionChanged += (_, _) => { HasSavedPaths = GamePaths.Count > 0; };
 
         PopulateDrives();
         SyncSettingsToCollection();
@@ -95,16 +95,38 @@ public partial class GamePathViewModel : ViewModelBase, IProgress<string>
     public async Task SearchAsync()
     {
         CanSearch = false;
+        CanCancelSearch = true;
+
+        _searchTokenSource = new CancellationTokenSource();
+        var token = _searchTokenSource.Token;
+
         var selectedDrives = Drives.Where(d => d.IsSelected).Select(d => d.Drive).ToList();
 
         if (selectedDrives.Count > 0)
         {
-            var foundPaths = await _gameSearchService.SearchGamePathsInDrivesAsync(selectedDrives, this);
-            AddUniquePaths(foundPaths);
-        }
+            try
+            {
+                await _gameSearchService.SearchGamePathsInDrivesAsync(selectedDrives, this,
+                    token, AddUniquePath);
+            }
+            catch (Exception e)
+            {
+                /* Ignore */
+            }
 
+            if (_searchTokenSource.IsCancellationRequested)
+            {
+                SearchStatus = "Canceled";
+                await Task.Delay(2000);
+            }
+        }
+        
         SearchStatus = "Search";
         CanSearch = true;
+        CanCancelSearch = false;
+        
+        _searchTokenSource.Dispose();
+        _searchTokenSource = null;
     }
 
     public async Task BrowseFolderAsync(Visual visual)
@@ -136,6 +158,11 @@ public partial class GamePathViewModel : ViewModelBase, IProgress<string>
         }
     }
 
+    public void CancelSearch()
+    {
+        _searchTokenSource?.Cancel();
+    }
+
     public async Task AddManualPathAsync()
     {
         if (string.IsNullOrWhiteSpace(TextboxGamePath))
@@ -144,23 +171,20 @@ public partial class GamePathViewModel : ViewModelBase, IProgress<string>
             return;
         }
 
-        AddUniquePaths([TextboxGamePath]);
+        AddUniquePath(TextboxGamePath);
         TextboxGamePath = string.Empty;
     }
 
-    private void AddUniquePaths(System.Collections.Generic.IEnumerable<string> paths)
+    private void AddUniquePath(string path)
     {
-        foreach (var path in paths)
+        if (!GamePaths.Contains(path))
         {
-            if (!GamePaths.Contains(path))
-            {
-                GamePaths.Add(path);
-            }
-        }
-        
-        _appSettingsService.Data!.GamePaths = GamePaths.ToList();
+            GamePaths.Add(path);
 
-        _appSettingsService.SaveAsync();
+            _appSettingsService.Data!.GamePaths = GamePaths.ToList();
+
+            _appSettingsService.SaveAsync();
+        }
     }
 
     public void RemoveSelectedPath()

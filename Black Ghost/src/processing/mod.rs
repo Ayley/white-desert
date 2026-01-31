@@ -1,2 +1,2 @@
-﻿pub mod ice_cipher;
+﻿pub mod raw_ice;
 pub mod bdo_decomp;

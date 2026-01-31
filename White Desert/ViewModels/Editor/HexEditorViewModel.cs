@@ -24,7 +24,7 @@ public partial class HexEditorViewModel : ViewModelBase
     }
     
     private void RegisterWeakReferences()
-    {
+    { 
         WeakReferenceMessenger.Default.Register<SelectedFileChanged>(this, SelectedFileChanged);
     }
 

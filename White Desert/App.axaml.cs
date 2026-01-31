@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
+using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using White_Desert.Models;
@@ -26,15 +27,23 @@ public partial class App : Application
 
         LoadInitialTheme(services);
         
+        var settings = services.GetRequiredService<IFileService<AppSettings>>();
+        
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DisableAvaloniaDataAnnotationValidation();
             
             desktop.MainWindow = services.GetRequiredService<MainWindow>();
 
+            services.GetRequiredService<IThemeService>().SetTransparencyLevel(settings.Data!.GetSelectedWindowTheme());
+            if (settings.Data!.GetSelectedWindowTheme() == WindowTransparencyLevel.None)
+            {
+                desktop.MainWindow.Background = settings.Data!.BrushFromHex();
+            }
+
             desktop.ShutdownRequested += async (_, _) =>
             {
-                await services.GetRequiredService<IFileService<AppSettings>>().SaveAsync();
+                await settings.SaveAsync();
             };
         }
 

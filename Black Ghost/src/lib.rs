@@ -1,24 +1,38 @@
-use std::ffi::CString;
+extern crate core;
+
 use rayon::iter::ParallelIterator;
 pub mod models;
 pub mod util;
 pub mod processing;
 
 use std::fs::File;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use image_dds::ddsfile::Dds;
+use image_dds::image::{DynamicImage, ImageFormat};
+use image_dds::image_from_dds;
 use luadec::LuaDecompiler;
 use memmap2::Mmap;
+use mimalloc::MiMalloc;
 use rayon::prelude::IntoParallelRefIterator;
 use safer_ffi::{ffi_export};
 use safer_ffi::prelude::{char_p, repr_c};
 use crate::models::bdo_index::BdoIndex;
 use crate::models::paz_file::PazFile;
 use crate::processing::bdo_decomp::BdoDecomp;
-use crate::processing::ice_cipher::IceCipher;
+use crate::processing::raw_ice::RawIce;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
+#[repr(i32)]
+pub enum ExtractType {
+    RawDecrypted = 0,
+    Converted = 1,
+}
 
 const BDO_ICE_KEY: [u8; 8] = [0x51, 0xF3, 0x0F, 0x11, 0x04, 0x24, 0x6A, 0x00];
-const BDO_TABLE_KEY: [u8; 8] = [0x6A, 0xD5, 0x8D, 0x21, 0x02, 0x8F, 0x9C, 0x00];
 
 #[ffi_export]
 pub fn load_bdo_index(
@@ -45,10 +59,8 @@ pub fn free_bdo_index(
 pub fn get_file_content(
     paz_folder_path: char_p::Ref<'_>,
     file_info: PazFile,
-    file_name: char_p::Ref<'_>,
 ) -> Option<repr_c::Vec<u8>> {
     let folder = paz_folder_path.to_str();
-    let name_str = file_name.to_str();
 
     let paz_name = format!("pad{:05}.paz", file_info.paz_number);
     let full_path = PathBuf::from(folder).join(paz_name);
@@ -62,34 +74,26 @@ pub fn get_file_content(
 
     let mut data = mmap[start..end].to_vec();
 
-    // --- HEURISTIK: ENTSCHLÜSSELUNG ERFORDERLICH? ---
     let mut needs_decryption = true;
 
-    // 1. Mathematischer Check: ICE benötigt zwingend 8-Byte Blöcke.
-    // Wenn die Größe nicht durch 8 teilbar ist, ist die Datei garantiert unverschlüsselt.
     if data.len() % 8 != 0 {
         needs_decryption = false;
     }
-    // 2. Struktur-Check: Falls sie durch 8 teilbar ist, schauen wir auf bekannte Header.
     else if data.len() >= 4 {
-        // Wenn bereits "PABR" (BSS) am Anfang steht, nicht mehr entschlüsseln.
         if &data[0..4] == b"PABR" {
             needs_decryption = false;
         }
     }
 
-    // Nur entschlüsseln, wenn beide Checks fehlschlagen.
     if needs_decryption {
-        let ice = IceCipher::new(&BDO_ICE_KEY);
+        let ice = RawIce::new(0, &BDO_ICE_KEY);
         if data.len() > 8192 {
-            ice.decrypt_parallel(&mut data);
+            ice.decrypt_par(&mut data);
         } else {
             ice.decrypt(&mut data);
         }
     }
 
-    // --- LAYER 2: DEKOMPRESSION ---
-    // (Prüfung auf 0x6E / 0x6F Header nach der möglichen Entschlüsselung)
     let is_compressed_container = if data.len() > 9 && (data[0] == 0x6E || data[0] == 0x6F) {
         let header_original_size = u32::from_le_bytes([data[5], data[6], data[7], data[8]]);
         header_original_size == file_info.original_size
@@ -107,7 +111,6 @@ pub fn get_file_content(
             Err(_) => return None
         }
     } else {
-        // Falls nicht komprimiert, auf die im Index angegebene Originalgröße stutzen.
         let limit = file_info.original_size as usize;
         if data.len() > limit {
             data.truncate(limit);
@@ -127,9 +130,8 @@ pub fn free_file_content(vec: repr_c::Vec<u8>) {
 pub fn decompile_lua(
     paz_folder_path: char_p::Ref<'_>,
     file_info: PazFile,
-    file_name: char_p::Ref<'_>,
 ) -> Option<repr_c::Vec<u8>> {
-    match get_file_content(paz_folder_path, file_info, file_name) {
+    match get_file_content(paz_folder_path, file_info) {
         Some(raw_data) => {
             let decompiler = LuaDecompiler::new();
             match decompiler.decompile(&raw_data) {
@@ -153,10 +155,10 @@ pub fn extract_files_batch(
     paz_folder_path: char_p::Ref<'_>,
     file_indices: repr_c::Vec<u32>,
     index: &BdoIndex,
+    extract_type: i32,
     progress_callback: extern "C" fn(i32, i32),
 ) -> usize {
     let base_output = Path::new(save_folder.to_str());
-
     let total_files = file_indices.len();
     let counter = AtomicUsize::new(0);
 
@@ -166,25 +168,54 @@ pub fn extract_files_batch(
         if i >= index.paz_files.len() { return false; }
         let file_info = index.paz_files[i];
 
-
         let folder_path = &index.metadata.folder_paths[file_info.folder_id as usize];
         let file_name = &index.metadata.file_names[file_info.file_id as usize];
 
         let relative_path = Path::new(folder_path.folder_name.trim_start_matches('/'))
             .join(file_name.trim_start_matches('/'));
+        let mut full_output_path = base_output.join(relative_path);
 
-        let full_output_path = base_output.join(relative_path);
+        let success = if let Some(data) = get_file_content(paz_folder_path, file_info) {
+            let mut final_data = data;
 
-        if let Some(parent) = full_output_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
+            if extract_type == 1 {
+                println!("Parse");
+                let ext = file_name.to_lowercase();
 
-        let c_file_name = CString::new(file_name.to_string()).unwrap_or_default();
+                if ext.ends_with(".dds") || ext.ends_with(".dds1") {
+                    match convert_dds_to_png_memory(&final_data) {
+                        Ok(png_data) => {
+                            full_output_path.set_extension("png");
+                            final_data = png_data.into();
+                        }
+                        Err(e) => {
+                            println!("-- Decode Error: {:?}", e);
+                        }
+                    }
+                }
 
-        let c_file_name_ref = char_p::Ref::from(c_file_name.as_c_str());
+                if ext.ends_with(".luac") {
+                    let decompiler = LuaDecompiler::new();
+                    // Wir dekompilieren und überschreiben final_data mit dem Ergebnis
+                    let result_code = match decompiler.decompile(&*final_data) {
+                        Ok(code) => {
+                            full_output_path.set_extension("lua");
+                            code.into_bytes()
+                        },
+                        Err(e) => {
+                            format!("-- Decompile Error: {:?}", e).into_bytes()
+                        }
+                    };
 
-        let success = if let Some(data) = get_file_content(paz_folder_path, file_info, c_file_name_ref) {
-            std::fs::write(full_output_path, &data[..]).is_ok()
+                    final_data = result_code.into();
+                }
+            }
+
+            if let Some(parent) = full_output_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+
+            std::fs::write(&full_output_path, &final_data[..]).is_ok()
         } else {
             false
         };
@@ -198,4 +229,19 @@ pub fn extract_files_batch(
     std::mem::forget(file_indices);
 
     count
+}
+
+fn convert_dds_to_png_memory(dds_buffer: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut reader = Cursor::new(dds_buffer);
+    let dds = Dds::read(&mut reader)?;
+
+    let img = image_from_dds(&dds, 0)?;
+
+    let mut png_buffer = Vec::new();
+    let mut cursor = Cursor::new(&mut png_buffer);
+
+    let dynamic_img = DynamicImage::ImageRgba8(img);
+    dynamic_img.write_to(&mut cursor, ImageFormat::Png)?;
+
+    Ok(png_buffer)
 }

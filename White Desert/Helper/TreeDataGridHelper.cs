@@ -25,8 +25,9 @@ public static class TreeDataGridHelper
                 return new
                 {
                     Index = index,
+                    FolderId = entry.FolderId,
                     FolderPath = paz.GetFolderPath(entry.FolderId),
-                    FileName = paz.GetFileName(entry.FileId)
+                    FileName = paz.GetFileName(entry.FileId),
                 };
             }).ToList();
 
@@ -49,7 +50,9 @@ public static class TreeDataGridHelper
 
                 if (!folderCache.TryGetValue(pathAcc, out var folderNode))
                 {
-                    folderNode = new BdoNode(partName, pathAcc + "/", true, -1) { WasLoaded = true };
+                    int? folderIndex = (i == parts.Length - 1) ? (int)result.FolderId : -1;
+                    
+                    folderNode = new BdoNode(partName, pathAcc + "/", true, folderIndex) { WasLoaded = true };
 
                     if (currentParent == null) rootList.Add(folderNode);
                     else currentParent.Children.Add(folderNode);
@@ -181,7 +184,7 @@ public static class TreeDataGridHelper
         return result.OrderBy(n => n.Name).ToList();
     }
 
-    public static List<uint> CollectIndicesParallel(IPazService paz, IEnumerable<BdoNode> selectedNodes)
+    public static List<uint> CollectIndicesParallel(IPazService paz, IEnumerable<BdoNode> selectedNodes, bool isSearching)
     {
         var results = new ConcurrentBag<uint>();
 
@@ -191,7 +194,7 @@ public static class TreeDataGridHelper
 
             if (node.IsFolder)
             {
-                CollectIndicesRecursive(paz, node, localList);
+                CollectIndicesRecursive(paz, node, localList, isSearching);
             }
             else if (node.EntryIndex.HasValue)
             {
@@ -204,9 +207,18 @@ public static class TreeDataGridHelper
         return results.Distinct().ToList();
     }
 
-    private static void CollectIndicesRecursive(IPazService paz, BdoNode parent, List<uint> results)
+    private static void CollectIndicesRecursive(IPazService paz, BdoNode parent, List<uint> results, bool isSearching)
     {
-        if (parent.EntryIndex is { } folderIdx && folderIdx != -1)
+        if (!parent.IsFolder)
+        {
+            if (parent.EntryIndex.HasValue)
+            {
+                results.Add((uint)parent.EntryIndex.Value);
+            }
+            return;
+        }
+        
+        if (!isSearching && parent.EntryIndex is { } folderIdx && folderIdx != -1)
         {
             try
             {
@@ -216,28 +228,16 @@ public static class TreeDataGridHelper
                     results.Add((uint)idx);
                 }
             }
-            catch
-            {
-                // Ignoriere Fehler bei einzelnen Ordnern
-            }
+            catch { /* Ignore */ }
         }
         
         if (parent.Children != null)
         {
             foreach (var child in parent.Children)
             {
-                if (child.IsFolder)
-                {
-                    CollectIndicesRecursive(paz, child, results);
-                }
+                CollectIndicesRecursive(paz, child, results, isSearching);
             }
         }
     }
-
-
-    private static AvaloniaList<BdoNode> SortNodes(AvaloniaList<BdoNode> nodes)
-    {
-        var sortedList = nodes.OrderByDescending(x => x.IsFolder).ThenBy(x => x.Name).ToList();
-        return new AvaloniaList<BdoNode>(sortedList);
-    }
+    
 }

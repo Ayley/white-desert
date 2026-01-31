@@ -9,16 +9,17 @@ public static partial class GhostBridge
 {
     private const string DllName = "black_ghost.dll";
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void ProgressCallback(int current, int total);
     
     [LibraryImport(DllName, StringMarshalling = StringMarshalling.Utf8)]
     public static partial IntPtr load_bdo_index(string path);
 
     [LibraryImport(DllName, StringMarshalling = StringMarshalling.Utf8)]
-    public static partial RustVec<byte> get_file_content(string pazFolderPath, PazFile fileInfo, string fileName);
+    public static partial RustVec<byte> get_file_content(string pazFolderPath, PazFile fileInfo);
 
     [LibraryImport(DllName, StringMarshalling = StringMarshalling.Utf8)]
-    public static partial RustVec<byte> decompile_lua(string pazFolderPath, PazFile fileInfo, string fileName);
+    public static partial RustVec<byte> decompile_lua(string pazFolderPath, PazFile fileInfo);
 
     [LibraryImport(DllName, StringMarshalling = StringMarshalling.Utf8)]
     public static partial nuint extract_files_batch(
@@ -26,6 +27,7 @@ public static partial class GhostBridge
         string pazFolderPath, 
         RustVec<uint> fileIndices, 
         IntPtr bdoIndexHandle,
+        ExtractType extractType,
         ProgressCallback progressCallback
     );
     

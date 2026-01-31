@@ -7,9 +7,9 @@
         x:Class="White_Desert.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
-        TransparencyLevelHint="Mica"
-        Background="Transparent"
         Icon="/Assets/app-logo.ico"
+        Background="Transparent"
+        TransparencyBackgroundFallback="LightSlateGray"
         Title="White Desert">
 
     <Design.DataContext>

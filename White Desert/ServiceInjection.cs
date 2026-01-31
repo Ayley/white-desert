@@ -25,6 +25,7 @@ public class ServiceInjection
         _collection.AddSingleton<IFileService<AppSettings>, FileService<AppSettings>>();
         _collection.AddSingleton<IPazService, PazService>();
         _collection.AddSingleton<ICursorService, CursorService>();
+        _collection.AddSingleton<IThemeService, ThemeService>();
         
         //App view models
         _collection.AddTransient<MainWindowViewModel>();

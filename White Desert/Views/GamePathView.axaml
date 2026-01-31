@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:White_Desert.ViewModels"
              xmlns:models="using:White_Desert.Models"
+             xmlns:controls="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
              x:DataType="vm:GamePathViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="White_Desert.Views.GamePathView">
@@ -51,15 +52,15 @@
                     <ListBox Grid.Row="1"
                              Margin="-5, 15"
                              IsVisible="{Binding HasSavedPaths}"
-                             ItemsSource="{Binding GamePaths}" 
+                             ItemsSource="{Binding GamePaths}"
                              SelectedItem="{Binding SelectedGamePath}">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="x:String">
                                 <Border
-                                        Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                        CornerRadius="4"
-                                        Padding="15"
-                                        Margin="-15, 0,-13 0">
+                                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                    CornerRadius="4"
+                                    Padding="15"
+                                    Margin="-15, 0,-13 0">
                                     <TextBlock Text="{Binding}"></TextBlock>
                                 </Border>
                             </DataTemplate>
@@ -68,18 +69,18 @@
 
                     <Grid Grid.Row="2" ColumnDefinitions="*, 15, *">
                         <Button Grid.Column="0"
-                            HorizontalAlignment="Stretch"
-                            Height="35" 
-                            Content="Remove"
-                            IsEnabled="{Binding CanRemove}"
-                            Command="{Binding RemoveSelectedPath}"/>
+                                HorizontalAlignment="Stretch"
+                                Height="35"
+                                Content="Remove"
+                                IsEnabled="{Binding CanRemove}"
+                                Command="{Binding RemoveSelectedPath}" />
                         <Button Grid.Column="2"
                                 HorizontalAlignment="Stretch"
-                                Height="35" 
+                                Height="35"
                                 Content="{Binding OpenStatus}"
                                 IsEnabled="{Binding CanOpen}"
-                                Classes="accent" 
-                                Command="{Binding NavigateToGame}"/>
+                                Classes="accent"
+                                Command="{Binding NavigateToGame}" />
                     </Grid>
                 </Grid>
             </Border>
@@ -133,15 +134,26 @@
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <Button Grid.Row="3"
-                            HorizontalAlignment="Stretch"
-                            Height="35"
-                            IsEnabled="{Binding CanSearch}"
-                            Command="{Binding SearchAsync}"
-                            Classes="accent">
-                        <TextBlock Text="{Binding SearchStatus}"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </Button>
+                    <Grid Grid.Row="3" ColumnDefinitions="*, Auto">
+                        <Button Grid.Column="0" HorizontalAlignment="Stretch"
+                                Height="35"
+                                IsEnabled="{Binding CanSearch}"
+                                Command="{Binding SearchAsync}"
+                                Classes="accent">
+                            <TextBlock Text="{Binding SearchStatus}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Button>
+
+                        <Button Grid.Column="1"
+                                IsVisible="{Binding CanCancelSearch}"
+                                Height="35"
+                                Width="35"
+                                Padding="0"
+                                Margin="8,0,0,0"
+                                Command="{Binding CancelSearch}">
+                            <controls:SymbolIcon Symbol="Cancel" FontSize="18" />
+                        </Button>
+                    </Grid>
                 </Grid>
             </Border>
 
@@ -172,16 +184,16 @@
                              VerticalContentAlignment="Center"
                              Watermark="Choose path..."
                              Height="35"
-                             Text="{Binding TextboxGamePath}"/>
+                             Text="{Binding TextboxGamePath}" />
 
                     <Button Grid.Column="1"
                             HorizontalContentAlignment="Center"
                             Content="..."
                             Margin="5,0,0,0"
                             Width="40"
-                            Height="35" 
+                            Height="35"
                             Command="{Binding BrowseFolderAsync}"
-                            CommandParameter="{Binding $parent[TopLevel]}"/>
+                            CommandParameter="{Binding $parent[TopLevel]}" />
 
                     <Button Grid.Column="2"
                             HorizontalContentAlignment="Center"
@@ -192,7 +204,7 @@
                             Width="70"
                             Height="35"
                             IsEnabled="{Binding CanTextboxGamePathAdd}"
-                            Command="{Binding AddManualPathAsync}"/>
+                            Command="{Binding AddManualPathAsync}" />
                 </Grid>
             </Grid>
         </Border>

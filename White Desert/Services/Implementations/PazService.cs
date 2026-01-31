@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Serilog;
+using White_Desert.Helper.Interop;
 using White_Desert.Models.GhostBridge;
 using White_Desert.Models.GhostBridge.Rust;
 using White_Desert.Services.Contracts;
@@ -47,7 +48,7 @@ public unsafe class PazService : IPazService
                 GameDirectory = metaPath;
                 string fullPath = GameDirectory + @"\Paz\pad00000.meta";
                 
-                _indexHandle = Helper.Interop.GhostBridge.load_bdo_index(fullPath);
+                _indexHandle = GhostBridge.load_bdo_index(fullPath);
 
                 if (_indexHandle == IntPtr.Zero)
                     throw new Exception("Cannot load Paz File");
@@ -139,11 +140,11 @@ public unsafe class PazService : IPazService
         lock (_lock)
         {
             if (!IsLoaded) return null;
-            var rustVec = Helper.Interop.GhostBridge.get_file_content(PazDirectory, entry, GetFileName(entry.FileId));
+            var rustVec = GhostBridge.get_file_content(PazDirectory, entry);
             if (rustVec.Data == IntPtr.Zero) return null;
 
             try { return rustVec.AsSpan().ToArray(); }
-            finally { Helper.Interop.GhostBridge.free_file_content(rustVec); }
+            finally { GhostBridge.free_file_content(rustVec); }
         }
     }
 
@@ -152,15 +153,15 @@ public unsafe class PazService : IPazService
         lock (_lock)
         {
             if (!IsLoaded) return null;
-            var rustVec = Helper.Interop.GhostBridge.decompile_lua(PazDirectory, entry, "");
+            var rustVec = GhostBridge.decompile_lua(PazDirectory, entry);
             if (rustVec.Data == IntPtr.Zero) return null;
 
             try { return rustVec.AsSpan().ToArray(); }
-            finally { Helper.Interop.GhostBridge.free_file_content(rustVec); }
+            finally { GhostBridge.free_file_content(rustVec); }
         }
     }
 
-    public int ExtractFilesBatch(string destinationRoot, List<uint> fileIndices, Helper.Interop.GhostBridge.ProgressCallback progressCallback)
+    public int ExtractFilesBatch(string destinationRoot, List<uint> fileIndices, ExtractType extractType, GhostBridge.ProgressCallback progressCallback)
     {
         if (fileIndices.Count == 0) return 0;
 
@@ -181,11 +182,12 @@ public unsafe class PazService : IPazService
 
                 try
                 {
-                    var result = Helper.Interop.GhostBridge.extract_files_batch(
+                    var result = GhostBridge.extract_files_batch(
                         destinationRoot,
                         PazDirectory,
                         rustIndices,
                         _indexHandle,
+                        extractType,
                         progressCallback
                     );
 
@@ -231,7 +233,7 @@ public unsafe class PazService : IPazService
         {
             if (_indexHandle != IntPtr.Zero)
             {
-                Helper.Interop.GhostBridge.free_bdo_index(_indexHandle);
+                GhostBridge.free_bdo_index(_indexHandle);
                 _indexHandle = IntPtr.Zero;
                 Index = null;
             }

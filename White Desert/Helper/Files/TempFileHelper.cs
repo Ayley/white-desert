@@ -8,43 +8,37 @@ public static class TempFileHelper
 {
     private static string GetTempDirectory() => Path.Combine(Path.GetTempPath(), "White Desert");
 
-    private static string GetFileName(PazFile file) 
-        => $"PAD{file.PazId:D5}_FID{file.FileId}_H{file.Hash}.tmp";
+    private static string GetFileName(PazFile file, string typeTag = "raw")
+        => $"PAD{file.PazId:D5}_FID{file.FileId}_H{file.Hash}_{typeTag}.cache";
 
-    public static string SaveTempFile(PazFile file, byte[] content, bool deleteOldCache)
+
+    public static string SaveProcessedFile(PazFile file, byte[] content, string typeTag, bool deleteOldCache)
     {
         var tempDirectory = GetTempDirectory();
-        var tempFile = Path.Combine(tempDirectory, GetFileName(file));
+        var tempFile = Path.Combine(tempDirectory, GetFileName(file, typeTag));
+
 
         if (!Directory.Exists(tempDirectory))
-        {
             Directory.CreateDirectory(tempDirectory);
-        }
-        
-        if (File.Exists(tempFile))
-        {
-            if (new FileInfo(tempFile).Length == content.Length)
-            {
-                return tempFile;
-            }
-        }
+
+        if (File.Exists(tempFile) && new FileInfo(tempFile).Length == content.Length)
+            return tempFile;
 
         if (deleteOldCache)
-        {
-            CleanOldCacheForIndex(tempDirectory, (int)file.PazId);
-        }
+            CleanOldCacheForIndex(tempDirectory, file, typeTag);
 
-        using var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.SequentialScan);
+        using var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096,
+            FileOptions.SequentialScan);
         fs.Write(content, 0, content.Length);
+
 
         return tempFile;
     }
 
-    public static bool ExistsTempFile(PazFile file, out string path)
+    public static bool TryGetProcessedFile(PazFile file, string typeTag, out string path)
     {
-        var tempFile = Path.Combine(GetTempDirectory(), GetFileName(file));
-        path = tempFile;
-        return File.Exists(tempFile);
+        path = Path.Combine(GetTempDirectory(), GetFileName(file, typeTag));
+        return File.Exists(path);
     }
 
     public static List<string> GetExistentTempFiles(PazFile file)
@@ -52,20 +46,47 @@ public static class TempFileHelper
         var tempDirectory = GetTempDirectory();
         if (!Directory.Exists(tempDirectory)) return [];
 
-        var pattern = $"PAD{file.PazId:D5}_FID{file.FileId}_*.tmp";
-        var tempFiles = Directory.GetFiles(tempDirectory, pattern);
+        var pattern = $"PAD{file.PazId:D5}_FID{file.FileId}_*.cache";
 
-        return [.. tempFiles];
+        return [.. Directory.GetFiles(tempDirectory, pattern)];
     }
 
-    private static void CleanOldCacheForIndex(string dir, int pazId)
+    public static void CleanAllCache()
+    {
+        var dir = GetTempDirectory();
+        if (Directory.Exists(dir))
+        {
+            try
+            {
+                Directory.Delete(dir, true);
+            }
+            catch
+            {
+                /* Ignore */
+            }
+        }
+    }
+
+    private static void CleanOldCacheForIndex(string dir, PazFile file, string typeTag)
     {
         try
         {
-            var oldFiles = Directory.GetFiles(dir, $"PAD{pazId:D5}_FID*");
-            foreach (var file in oldFiles)
+            var pattern = $"PAD{file.PazId:D5}_FID{file.FileId}_H*_{typeTag}.cache";
+
+            var oldFiles = Directory.GetFiles(dir, pattern);
+            foreach (var f in oldFiles)
             {
-                try { File.Delete(file); } catch { /* Ignore */ }
+                if (!f.Contains($"_H{file.Hash}_"))
+                {
+                    try
+                    {
+                        File.Delete(f);
+                    }
+                    catch
+                    {
+                        /* Ignore */
+                    }
+                }
             }
         }
         catch

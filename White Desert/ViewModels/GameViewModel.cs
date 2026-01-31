@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
 using Avalonia.Platform.Storage;
@@ -18,6 +20,7 @@ using White_Desert.Services.Contracts;
 using White_Desert.Helper;
 using White_Desert.Helper.Files;
 using White_Desert.Helper.Image;
+using White_Desert.Helper.Interop;
 using White_Desert.Messages;
 using White_Desert.Models.GhostBridge;
 
@@ -37,12 +40,17 @@ public partial class GameViewModel : ViewModelBase
     [ObservableProperty] private bool _showHexView;
     [ObservableProperty] private bool _showEditorView;
     [ObservableProperty] private bool _showImageView;
+    
+    [ObservableProperty] private int _selectedTabStripIndex;
+    [ObservableProperty] private int _selectedPageContainerIndex;
 
     [ObservableProperty] private bool _canExtract;
     [ObservableProperty] private string _extractText = "Extract";
+    private CancellationTokenSource? _tokenSource;
 
     private readonly BdoNode _placeholder = new("", "", false);
-
+    private BdoNode? _selectedNode;
+    
     private readonly IFileService<AppSettings> _fileService;
     private readonly IPazService _pazService;
     private readonly ICursorService _cursorService;
@@ -102,57 +110,111 @@ public partial class GameViewModel : ViewModelBase
         });
     }
 
-    private void RowSelectionOnSelectionChanged(object? sender, TreeSelectionModelSelectionChangedEventArgs<BdoNode> e)
+    private async void RowSelectionOnSelectionChanged(object? sender,
+        TreeSelectionModelSelectionChangedEventArgs<BdoNode> e)
     {
         var node = ActiveSource.RowSelection!.SelectedItem;
-        if (node == null) return;
+        _selectedNode = node;
+        if (node?.EntryIndex == null) return;
+
+        _tokenSource?.Cancel();
+        _tokenSource = new CancellationTokenSource();
+        var token = _tokenSource.Token;
 
         CanExtract = true;
-
         WeakReferenceMessenger.Default.Send(new InitSelectedFileChanged());
-
-        if (node.EntryIndex == null) return;
-
-        PazFile? rawData = null;
 
         try
         {
-            rawData = _pazService[node.EntryIndex.Value];
+            var result = await Task.Run(async () => await LoadFileInBackgroundAsync(node, token), token);
+
+            if (token.IsCancellationRequested || result == null) return;
+
+            UpdateViewsVisibility(node.Name, node.IsFolder);
+            WeakReferenceMessenger.Default.Send(new SelectedFileChanged(result.RawData, node, result.Content,
+                result.TempFile));
         }
-        catch (Exception exception)
+        catch (OperationCanceledException)
         {
-            Console.WriteLine(exception);
+            /* Ignore */
         }
-
-        if (rawData == null) return;
-
-        byte[]? content;
-        string tempFile;
-
-        if (TempFileHelper.ExistsTempFile(rawData.Value, out var path))
+        catch (Exception ex)
         {
-            content = File.ReadAllBytes(path);
-            tempFile = path;
+            Log.Error(ex, "Error selecting file {FileName}", node.Name);
         }
-        else
-        {
-            content = _pazService.GetFileBytes(rawData.Value);
-            tempFile = TempFileHelper.SaveTempFile(rawData.Value, content!, _fileService.Data!.DeleteOldCachedFiles);
-        }
-
-        UpdateViewsVisibility(node.Name);
-
-        WeakReferenceMessenger.Default.Send(new SelectedFileChanged(rawData, node, content, tempFile));
     }
 
-    private void UpdateViewsVisibility(string file)
-    {
-        ShowHexView = _fileService.Data!.ShowHexView;
+    private record FileLoadResult(PazFile RawData, byte[] Content, string TempFile);
 
+    private async Task<FileLoadResult?> LoadFileInBackgroundAsync(BdoNode node, CancellationToken token)
+    {
+        try
+        {
+            if (token.IsCancellationRequested) return null;
+
+            var rawData = _pazService[node.EntryIndex!.Value];
+            if (token.IsCancellationRequested) return null;
+
+            byte[]? content = null;
+            var tempFile = string.Empty;
+
+            if (TempFileHelper.TryGetProcessedFile(rawData, "temp", out var path))
+            {
+                if (token.IsCancellationRequested) return null;
+                
+                content = await File.ReadAllBytesAsync(path, token);
+                tempFile = path;
+            }
+            else
+            {
+                content = _pazService.GetFileBytes(rawData);
+
+                if (content == null || token.IsCancellationRequested) return null;
+
+                tempFile = TempFileHelper.SaveProcessedFile(rawData, content, "raw",
+                    _fileService.Data!.DeleteOldCachedFiles);
+            }
+
+            return new FileLoadResult(rawData, content, tempFile);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private void UpdateViewsVisibility(string file, bool isFolder)
+    {
+        ShowHexView = _fileService.Data!.ShowHexView && !isFolder;
+
+        if (SelectedPageContainerIndex == 1 && !ShowHexView)
+        {
+            SelectedPageContainerIndex = 0;
+            SelectedTabStripIndex = 0;
+        }
+        
         var isImage = ImageHelper.GetImageType(file) != ImageType.None;
 
-        ShowEditorView = _fileService.Data!.ShowEditorView && !isImage;
-        ShowImageView = _fileService.Data!.ShowImageView && isImage;
+        ShowEditorView = _fileService.Data!.ShowEditorView && !isImage && !isFolder;
+        
+        if (SelectedPageContainerIndex == 2 && !ShowEditorView)
+        {
+            SelectedPageContainerIndex = 0;
+            SelectedTabStripIndex = 0;
+        }
+        
+        ShowImageView = _fileService.Data!.ShowImageView && isImage && !isFolder;
+        
+        if (SelectedPageContainerIndex == 3 && !ShowImageView)
+        {
+            SelectedPageContainerIndex = 0;
+            SelectedTabStripIndex = 0;
+        }
+    }
+
+    partial void OnSelectedTabStripIndexChanged(int value)
+    {
+        SelectedPageContainerIndex = value;
     }
 
     public async Task SearchAsync()
@@ -184,13 +246,18 @@ public partial class GameViewModel : ViewModelBase
         }
     }
 
-    public async Task Extract(Visual visual)
+    public async Task Extract(ExtractType type)
     {
         _cursorService.SetWaitCursor();
         var selectedItems = ActiveSource.RowSelection?.SelectedItems.Cast<BdoNode>().ToList();
         if (selectedItems == null || selectedItems.Count == 0) return;
 
-        var topLevel = TopLevel.GetTopLevel(visual);
+        var desktop = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        var owner = desktop?.MainWindow;
+
+        if (owner == null) return;
+
+        var topLevel = TopLevel.GetTopLevel(owner);
         var folders = await topLevel!.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             { Title = "Select Export Destination" });
         if (folders.Count == 0) return;
@@ -201,13 +268,15 @@ public partial class GameViewModel : ViewModelBase
         try
         {
             ExtractText = "Scanning selection...";
-
+            
+            var isSearchMode = ActiveSource == _searchSource;
+            
             var indices = await Task.Run(() =>
-                TreeDataGridHelper.CollectIndicesParallel(_pazService, selectedItems));
-
+                TreeDataGridHelper.CollectIndicesParallel(_pazService, selectedItems, isSearchMode));
+            
             if (indices.Count > 0)
             {
-                await Task.Run(() => _pazService.ExtractFilesBatch(outputRoot, indices,
+                await Task.Run(() => _pazService.ExtractFilesBatch(outputRoot, indices, type,
                     (current, total) => ExtractText = $"Extracting: {current} / {total}"));
 
                 ExtractText = $"Successfully extracted {indices.Count} files!";
@@ -218,6 +287,7 @@ public partial class GameViewModel : ViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Error extracting files");
+            Console.WriteLine(ex.Message);
         }
         finally
         {
@@ -225,6 +295,22 @@ public partial class GameViewModel : ViewModelBase
             ExtractText = "Extract";
             CanExtract = true;
         }
+    }
+
+    public void CopyPath(string type)
+    {
+        if (_selectedNode == null) return;
+
+        var result = type switch
+        {
+            "Name" => _selectedNode.Name,
+            "Full" => _selectedNode.FullPath,
+            "Folder" => Path.GetDirectoryName(_selectedNode.FullPath) ?? string.Empty,
+            _ => string.Empty
+        };
+
+        (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow.Clipboard
+            .SetTextAsync(result);
     }
 
     private async void LoadFolders(List<FolderNameTuple> allFolder)

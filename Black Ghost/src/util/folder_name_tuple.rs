@@ -1,8 +1,9 @@
-﻿use safer_ffi::{derive_ReprC, String};
+﻿use safer_ffi::{derive_ReprC};
+
 #[derive_ReprC]
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FolderNameTuple {
-    pub folder_name: String,
+    pub folder_name: safer_ffi::String,
     pub folder_index: u32,
 }

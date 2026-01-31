@@ -9,5 +9,9 @@ crate-type = ["dylib"]
 [dependencies]
 memmap2 = "=0.9.9"
 rayon = "1.8"
+memchr = "2.7.6"
+mimalloc = "0.1.48"
 luadec = "0.2.0"
 safer-ffi = "0.1.13"
+image = "0.25.9"
+image_dds = "0.7.2"
