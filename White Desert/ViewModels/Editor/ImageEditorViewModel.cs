@@ -41,13 +41,14 @@ public partial class ImageEditorViewModel : ViewModelBase
     private async void SelectedFileChanged(object recipient, SelectedFileChanged message)
     {
         _tokenSource?.Cancel();
+        _tokenSource?.Dispose();
+        
+        
         _tokenSource = new CancellationTokenSource();
         var token = _tokenSource.Token;
 
         try
         {
-            SelectedImage = null;
-
             if (message.Node.IsFolder) return;
             if (!_fileService.Data!.ShowImageView) return;
             if (!message.File.HasValue) return;
@@ -90,11 +91,16 @@ public partial class ImageEditorViewModel : ViewModelBase
                     return Bitmap.DecodeToHeight(ms, 1080);
                 }, token);
 
+                var oldImage = SelectedImage;
+                
                 SelectedImage = bitmap;
+                
+                oldImage?.Dispose();
             }
             else
             {
                 _tokenSource?.Dispose();
+                _tokenSource = null;
             }
         }
         catch (Exception e)
